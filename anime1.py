@@ -6,6 +6,7 @@ import requests, os, re, time, json, sys
 # import  concurrent.futures
 
 download_path = "{}/Anime1_Download".format(os.getcwd())
+name = ""
 
 # 設定 Header 
 headers = {
@@ -23,7 +24,13 @@ def Anime_Season(url):
     urls = []
     # https://anime1.me/category/.../...
     r = requests.post(url, headers = headers)
-    soup = BeautifulSoup(r.text, 'lxml') 
+    soup = BeautifulSoup(r.text, 'lxml')
+    
+    global name 
+    name = re.search(r'(.*?) \u2013 Anime1\.me 動畫線上看', soup.find('title').text, re.M|re.I).group(1)
+    if not os.path.exists(os.path.join(download_path, name)):
+        os.mkdir(os.path.join(download_path, name))
+
     h2 = soup.find_all('h2', class_="entry-title")
     for i in h2:
         url = i.find("a", attrs={"rel": "bookmark"}).get('href')
@@ -34,7 +41,7 @@ def Anime_Season(url):
         ele_div = soup.find('div', class_ = 'nav-previous')
         NextUrl = ele_div.find('a').get('href')
         urls.extend(Anime_Season(NextUrl))
-    
+    urls.reverse()
     return urls
 
 def Anime_Episode(url):
@@ -83,7 +90,7 @@ def MP4_DL(Download_URL, Video_Name, Cookies):
         print('+ \033[1;34m{}\033[0m [{size:.2f} MB]'.format(Video_Name, size = content_length / 1024 / 1024))
         # Progress Bar
         with alive_bar(round(content_length / chunk_size), spinner = 'arrows2', bar = 'filling' ) as bar:
-            with open(os.path.join(download_path,  '{}.mp4'.format(Video_Name)), 'wb') as f:
+            with open(os.path.join(download_path, name, '{}.mp4'.format(Video_Name)), 'wb') as f:
                 for data in r.iter_content(chunk_size = chunk_size):
                     f.write(data)
                     f.flush()
