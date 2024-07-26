@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
+import asyncio
 from bs4 import BeautifulSoup
 from alive_progress import alive_bar
 import requests, os, re, time, json, sys
@@ -20,7 +21,7 @@ headers = {
     "user-agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3573.0 Safari/537.36",
 }
 
-def Anime_Season(url):
+async def Anime_Season(url):
     urls = []
     # https://anime1.me/category/.../...
     r = requests.post(url, headers = headers)
@@ -40,11 +41,11 @@ def Anime_Season(url):
     if(soup.find('div', class_ = 'nav-previous')):
         ele_div = soup.find('div', class_ = 'nav-previous')
         NextUrl = ele_div.find('a').get('href')
-        urls.extend(Anime_Season(NextUrl))
+        urls.extend(await Anime_Season(NextUrl))
     urls.reverse()
     return urls
 
-def Anime_Episode(url):
+async def Anime_Episode(url):
     #1 https://anime1.me/...
     r = requests.post(url, headers = headers)
     soup = BeautifulSoup(r.text, 'lxml') 
@@ -67,9 +68,9 @@ def Anime_Episode(url):
     cookie_p = re.search(r"p=(.*?);", set_cookie, re.M|re.I).group(1)
     cookie_h = re.search(r"HttpOnly, h=(.*?);", set_cookie, re.M|re.I).group(1)
     cookies = 'e={};p={};h={};'.format(cookie_e, cookie_p, cookie_h)
-    MP4_DL(url, title, cookies)
+    await MP4_DL(url, title, cookies)
 
-def MP4_DL(Download_URL, Video_Name, Cookies):
+async def MP4_DL(Download_URL, Video_Name, Cookies):
     # 每次下載的資料大小
     chunk_size = 10240 
 
@@ -99,7 +100,7 @@ def MP4_DL(Download_URL, Video_Name, Cookies):
     else:
         print("- \033[1;31mFailure\033[0m：{}".format(r.status_code)) 
 
-if __name__ == '__main__':     
+async def main():
     url_list = []
     if not os.path.exists(download_path):
         os.mkdir(download_path)
@@ -109,7 +110,7 @@ if __name__ == '__main__':
     for anime_url in anime_urls:
         # 區分連結類型
         if re.search(r"anime1.me/category/(.*?)", anime_url, re.M|re.I):
-            url_list.extend(Anime_Season(anime_url))
+            url_list.extend(await Anime_Season(anime_url))
         elif re.search(r"anime1.me/[0-9]", anime_url, re.M|re.I):
             url_list.append(anime_url)
         else:
@@ -123,11 +124,11 @@ if __name__ == '__main__':
     #     executor.map(Anime_Episode, url_list)
 
     for url in url_list:
-        Anime_Episode(url)
+        await Anime_Episode(url)
     
     end_time = time.time()
     
     print(f"+ 共耗時 {round(end_time - start_time, 2)} 秒（{len(url_list)} 個已下載）")
 
-    
-    
+if __name__ == '__main__':     
+    asyncio.run(main())
