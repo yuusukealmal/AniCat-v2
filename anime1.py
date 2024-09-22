@@ -83,22 +83,34 @@ async def MP4_DL(Download_URL, Video_Name, Cookies):
         "user-agent": 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
     }
     
+    try:
         r = requests.get(Download_URL, headers = headers_cookies, stream=True, timeout=(3,7)) 
+    except Exception as e:
+        print("x \033[1;31mFail to Download\033[0m:{}, Cause: {}".format(Video_Name, e))
+        return
     # 影片大小
-    content_length = int(r.headers['content-length']) 
-
+    content_length = int(r.headers['content-length'])
+    file = os.path.join(download_path, name, '{}.mp4'.format(Video_Name))
+    
+    if (os.path.exists(file) and open(os.path.join(download_path, name, '{}.mp4'.format(Video_Name)), 'rb').read().__len__() == content_length):
+        print("- \033[1;32mFile Exists, Same Size as Server\033[0m:{}".format(Video_Name))
+        return
     if(r.status_code == 200):
         print('+ \033[1;34m{}\033[0m [{size:.2f} MB]'.format(Video_Name, size = content_length / 1024 / 1024))
         # Progress Bar
-        with alive_bar(round(content_length / chunk_size), spinner = 'arrows2', bar = 'filling' ) as bar:
-            with open(os.path.join(download_path, name, '{}.mp4'.format(Video_Name)), 'wb') as f:
-                for data in r.iter_content(chunk_size = chunk_size):
-                    f.write(data)
-                    f.flush()
-                    bar()
-            f.close()
+        try:
+            with alive_bar(round(content_length / chunk_size), spinner = 'arrows2', bar = 'filling' ) as bar:
+                with open(os.path.join(download_path, name, '{}.mp4'.format(Video_Name)), 'wb') as f:
+                    for data in r.iter_content(chunk_size = chunk_size):
+                        f.write(data)
+                        f.flush()
+                        bar()
+                f.close()
+        except Exception as e:
+            print("x \033[1;31mDownload Error\033[0m:{}, Cause: {}".format(Video_Name, e))
+            return MP4_DL(Download_URL, Video_Name, Cookies)
     else:
-        print("- \033[1;31mFailure\033[0m：{}".format(r.status_code)) 
+        print("x \033[1;31mFail to Download\033[0m:{}".format(r.status_code)) 
 
 async def main():
 
