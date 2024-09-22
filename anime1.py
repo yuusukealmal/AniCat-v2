@@ -28,6 +28,7 @@ async def Anime_Season(url):
     soup = BeautifulSoup(r.text, 'lxml')
     
     global name 
+    name = re.search(r'(.*?) \u2013 Anime1\.me 動畫線上看', soup.find('title').text, re.M|re.I).group(1)
     if not os.path.exists(os.path.join(download_path, name)):
         os.mkdir(os.path.join(download_path, name))
 
@@ -41,7 +42,6 @@ async def Anime_Season(url):
         ele_div = soup.find('div', class_ = 'nav-previous')
         NextUrl = ele_div.find('a').get('href')
         urls.extend(await Anime_Season(NextUrl))
-    name = re.search(r'(.*?) \u2013 Anime1\.me 動畫線上看', soup.find('title').text, re.M|re.I).group(1)
     urls.reverse()
     return urls
 
@@ -101,13 +101,17 @@ async def MP4_DL(Download_URL, Video_Name, Cookies):
         print("- \033[1;31mFailure\033[0m：{}".format(r.status_code)) 
 
 async def main():
-    url_list = []
+
+    start_time = time.time()
+
     if not os.path.exists(download_path):
         os.mkdir(download_path)
 
     anime_urls = input("? Anime1 URL：").split(',')
     
     for anime_url in anime_urls:
+
+        url_list = []
         # 區分連結類型
         if re.search(r"anime1.me/category/(.*?)", anime_url, re.M|re.I):
             url_list.extend(await Anime_Season(anime_url))
@@ -116,19 +120,17 @@ async def main():
         else:
             print("- \033[1;31mUnable to support this link. QAQ ({})\033[0m".format(anime_url))
             sys.exit(0)
-    
-    start_time = time.time()
+
+        for url in url_list:
+            await Anime_Episode(url)
 
     ## Multithreading ##
     # with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
     #     executor.map(Anime_Episode, url_list)
-
-    for url in url_list:
-        await Anime_Episode(url)
     
     end_time = time.time()
-    
-    print(f"+ 共耗時 {round(end_time - start_time, 2)} 秒（{len(url_list)} 個已下載）")
+
+    print(f"+ 共耗時 {round(end_time - start_time, 2)} 秒")
 
 if __name__ == '__main__':     
     asyncio.run(main())
