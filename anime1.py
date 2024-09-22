@@ -24,7 +24,7 @@ headers = {
 async def Anime_Season(url):
     urls = []
     # https://anime1.me/category/.../...
-    r = requests.post(url, headers = headers)
+    r = requests.post(url, headers = headers, timeout=(3,7))
     soup = BeautifulSoup(r.text, 'lxml')
     
     global name 
@@ -47,7 +47,7 @@ async def Anime_Season(url):
 
 async def Anime_Episode(url):
     #1 https://anime1.me/...
-    r = requests.post(url, headers = headers)
+    r = requests.post(url, headers = headers, timeout=(3,7))
     soup = BeautifulSoup(r.text, 'lxml') 
     data = soup.find('video', class_ = 'video-js')['data-apireq']
     title = soup.find('h2', class_="entry-title").text
@@ -60,7 +60,7 @@ async def Anime_Episode(url):
     xsend = 'd={}'.format(data)
 
     #3 APIv2
-    r = requests.post('https://v.anime1.me/api',headers = headers,data = xsend)
+    r = requests.post('https://v.anime1.me/api',headers = headers,data = xsend, timeout=(3,7))
     url = 'https:{}'.format(json.loads(r.text)['s'][0]['src'])
     
     set_cookie = r.headers['set-cookie']
@@ -83,7 +83,7 @@ async def MP4_DL(Download_URL, Video_Name, Cookies):
         "user-agent": 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
     }
     
-    r = requests.get(Download_URL, headers = headers_cookies, stream=True) 
+        r = requests.get(Download_URL, headers = headers_cookies, stream=True, timeout=(3,7)) 
     # 影片大小
     content_length = int(r.headers['content-length']) 
 
