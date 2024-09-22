@@ -107,7 +107,7 @@ async def main():
     if not os.path.exists(download_path):
         os.mkdir(download_path)
 
-    anime_urls = input("? Anime1 URL：").split(',')
+    anime_urls = open('url.txt', 'r').read().splitlines()
     
     for anime_url in anime_urls:
 
