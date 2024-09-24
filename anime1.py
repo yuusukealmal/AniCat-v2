@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
-import asyncio
+import math, asyncio
 from bs4 import BeautifulSoup
 from alive_progress import alive_bar
 import requests, os, re, time, json, sys
@@ -8,6 +8,8 @@ import requests, os, re, time, json, sys
 
 download_path = "{}/Anime1_Download".format(os.getcwd())
 name = ""
+eps = 0
+total_size = 0
 
 # 設定 Header 
 headers = {
@@ -20,6 +22,10 @@ headers = {
     "Content-Type":"application/x-www-form-urlencoded",
     "user-agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3573.0 Safari/537.36",
 }
+
+def convert_size(size):
+    size_name = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+    return f"{size//1024**(int(round(math.log(size, 1024)))-1)}.{round(size%1024, 2)} {size_name[int(round(math.log(size, 1024)))-1]}"
 
 async def Anime_Season(url):
     urls = []
@@ -73,6 +79,8 @@ async def Anime_Episode(url):
 async def MP4_DL(Download_URL, Video_Name, Cookies):
     # 每次下載的資料大小
     chunk_size = 10240 
+    global total_size
+    global eps
 
     headers_cookies ={
         "accept": "*/*",
@@ -93,7 +101,7 @@ async def MP4_DL(Download_URL, Video_Name, Cookies):
     file = os.path.join(download_path, name, '{}.mp4'.format(Video_Name))
     
     if (os.path.exists(file) and open(os.path.join(download_path, name, '{}.mp4'.format(Video_Name)), 'rb').read().__len__() == content_length):
-        print("- \033[1;32mFile Exists, Same Size as Server\033[0m:{}".format(Video_Name))
+        print("- \033[1;32mFile Exists, Same Size as Server\033[0m:{} [{}]".format(Video_Name, convert_size(content_length)))
         return
     if(r.status_code == 200):
         print('+ \033[1;34m{}\033[0m [{size:.2f} MB]'.format(Video_Name, size = content_length / 1024 / 1024))
@@ -106,6 +114,8 @@ async def MP4_DL(Download_URL, Video_Name, Cookies):
                         f.flush()
                         bar()
                 f.close()
+            eps += 1
+            total_size += content_length
         except Exception as e:
             print("x \033[1;31mDownload Error\033[0m:{}, Cause: {}".format(Video_Name, e))
             return MP4_DL(Download_URL, Video_Name, Cookies)
@@ -142,7 +152,7 @@ async def main():
     
     end_time = time.time()
 
-    print(f"+ 共耗時 {round(end_time - start_time, 2)} 秒")
+    print(f"+ 耗時 {round(end_time - start_time, 2)} 秒, 下載 {eps} 集, 總大小 {convert_size(total_size)}")
 
 if __name__ == '__main__':     
     asyncio.run(main())
