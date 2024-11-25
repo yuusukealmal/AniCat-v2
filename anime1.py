@@ -1,15 +1,14 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
-import math, asyncio
+import asyncio, os, re, time, sys, requests, json, math
 from bs4 import BeautifulSoup
 from alive_progress import alive_bar
-import requests, os, re, time, json, sys
+from routes import color
 # import  concurrent.futures
 
 download_path = "{}/Anime1_Download".format(os.getcwd())
 name = ""
-eps = 0
-total_size = 0
+eps, total_size = 0, 0
 
 # 設定 Header 
 headers = {
@@ -46,11 +45,11 @@ async def Anime_Season(url):
         url = i.find("a", attrs={"rel": "bookmark"}).get('href')
         urls.append(url)
 
-    # NextPage
+    # nextPage
     if(soup.find('div', class_ = 'nav-previous')):
         ele_div = soup.find('div', class_ = 'nav-previous')
-        NextUrl = ele_div.find('a').get('href')
-        urls.extend(await Anime_Season(NextUrl))
+        nextUrl = ele_div.find('a').get('href')
+        urls.extend(await Anime_Season(nextUrl))
     urls.reverse()
     return urls
 
@@ -80,10 +79,10 @@ async def Anime_Episode(url):
         cookies = 'e={};p={};h={};'.format(cookie_e, cookie_p, cookie_h)
         await MP4_DL(url, title, cookies)
     except TypeError:
-        print("- \033[1;31mUnable to support this link. QAQ ({})\033[0m".format(url))
+        color.RED.format("x", "Error to find data for this link: {}".format(url))
         return
 
-async def MP4_DL(Download_URL, Video_Name, Cookies, retries=3):
+async def MP4_DL(download_URL, video_name, cookies, retries=3):
     # 每次下載的資料大小
     chunk_size = 10240 
     global total_size
@@ -93,33 +92,33 @@ async def MP4_DL(Download_URL, Video_Name, Cookies, retries=3):
         "accept": "*/*",
         "accept-encoding": 'identity;q=1, *;q=0',
         "accept-language": 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-        "cookie": Cookies,
+        "cookie": cookies,
         "dnt": '1',
         "user-agent": 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
     }
     
     try:
-        r = requests.get(Download_URL, headers=headers_cookies, stream=True, timeout=(3, 7))
+        r = requests.get(download_URL, headers=headers_cookies, stream=True, timeout=(3, 7))
     except Exception as e:
         if retries > 0:
-            print("x \033[1;31mRetry to Download\033[0m:{}, Cause: {}".format(Video_Name, e))
-            return await MP4_DL(Download_URL, Video_Name, Cookies, retries - 1)
+            color.YELLOW.format("!", "Retry to Download:{}, Cause: {}".format(video_name, e))
+            return await MP4_DL(download_URL, video_name, cookies, retries - 1)
         else:
-            print("x \033[1;31mFail to Download\033[0m:{}, Cause: {}".format(Video_Name, e))
+            color.RED.format("x", "Fail to Download:{}, Cause: {}".format(video_name, e))
             return None
     # 影片大小
     content_length = int(r.headers['content-length'])
-    file = os.path.join(download_path, name, '{}.mp4'.format(Video_Name))
+    file = os.path.join(download_path, name, '{}.mp4'.format(video_name))
     
-    if (os.path.exists(file) and open(os.path.join(download_path, name, '{}.mp4'.format(Video_Name)), 'rb').read().__len__() == content_length):
-        print("- \033[1;32mFile Exists, Same Size as Server\033[0m:{} [{}]".format(Video_Name, convert_size(content_length)))
+    if (os.path.exists(file) and open(os.path.join(download_path, name, '{}.mp4'.format(video_name)), 'rb').read().__len__() == content_length):
+        color.GREEN.format("-", "File Exists, Same Size as Server\:{} [{}]".format(video_name, convert_size(content_length)))
         return
     if(r.status_code == 200):
-        print('+ \033[1;34m{}\033[0m [{size:.2f} MB]'.format(Video_Name, size = content_length / 1024 / 1024))
+        color.BLUE.format("+" "{} [{size:.2f} MB]".format(video_name, size = content_length / 1024 / 1024))
         # Progress Bar
         try:
             with alive_bar(round(content_length / chunk_size), spinner = 'arrows2', bar = 'filling' ) as bar:
-                with open(os.path.join(download_path, name, '{}.mp4'.format(Video_Name)), 'wb') as f:
+                with open(os.path.join(download_path, name, '{}.mp4'.format(video_name)), 'wb') as f:
                     for data in r.iter_content(chunk_size = chunk_size):
                         f.write(data)
                         f.flush()
@@ -128,10 +127,10 @@ async def MP4_DL(Download_URL, Video_Name, Cookies, retries=3):
             eps += 1
             total_size += content_length
         except Exception as e:
-            print("x \033[1;31mDownload Error\033[0m:{}, Cause: {}".format(Video_Name, e))
-            return await MP4_DL(Download_URL, Video_Name, Cookies)
+            color.RED.format("x", "Download Error:{}, Cause: {}".format(video_name, e))
+            return await MP4_DL(download_URL, video_name, cookies)
     else:
-        print("x \033[1;31mFail to Download\033[0m:{}".format(r.status_code)) 
+        color.RED.format("x", "Fail to Download{}".format(r.status_code))
 
 async def main():
 
@@ -151,7 +150,7 @@ async def main():
         elif re.search(r"anime1.me/[0-9]", anime_url, re.M|re.I):
             url_list.append(anime_url)
         else:
-            print("- \033[1;31mUnable to support this link. QAQ ({})\033[0m".format(anime_url))
+            color.RED.format("-", "Unable to support this link. QAQ ({})".format(anime_url))
             sys.exit(0)
 
         for url in url_list:
