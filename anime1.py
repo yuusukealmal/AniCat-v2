@@ -55,31 +55,35 @@ async def Anime_Season(url):
     return urls
 
 async def Anime_Episode(url):
-    #1 https://anime1.me/...
     r = requests.post(url, headers = headers, timeout=(3,7))
-    soup = BeautifulSoup(r.text, 'lxml') 
-    data = soup.find('video', class_ = 'video-js')['data-apireq']
-    title = soup.find('h2', class_="entry-title").text
+    soup = BeautifulSoup(r.text, 'lxml')
+    try:
+        #1 https://anime1.me/... 
+        data = soup.find('video', class_ = 'video-js')['data-apireq']
+        title = soup.find('h2', class_="entry-title").text
 
-    # #2 https://v.anime1.me/watch?v=...
-    # r = requests.post(url,headers = headers)
-    # soup = BeautifulSoup(r.text, 'lxml') 
-    # script_text = soup.find_all("script")[1].string
-    # xsend = 'd={}'.format(re.search(r"'d=(.*?)'", script_text, re.M|re.I).group(1))
-    xsend = 'd={}'.format(data)
+        # #2 https://v.anime1.me/watch?v=...
+        # r = requests.post(url,headers = headers)
+        # soup = BeautifulSoup(r.text, 'lxml') MP4_DL
+        # script_text = soup.find_all("script")[1].string
+        # xsend = 'd={}'.format(re.search(r"'d=(.*?)'", script_text, re.M|re.I).group(1))
+        xsend = 'd={}'.format(data)
 
-    #3 APIv2
-    r = requests.post('https://v.anime1.me/api',headers = headers,data = xsend, timeout=(3,7))
-    url = 'https:{}'.format(json.loads(r.text)['s'][0]['src'])
-    
-    set_cookie = r.headers['set-cookie']
-    cookie_e = re.search(r"e=(.*?);", set_cookie, re.M|re.I).group(1)
-    cookie_p = re.search(r"p=(.*?);", set_cookie, re.M|re.I).group(1)
-    cookie_h = re.search(r"HttpOnly, h=(.*?);", set_cookie, re.M|re.I).group(1)
-    cookies = 'e={};p={};h={};'.format(cookie_e, cookie_p, cookie_h)
-    await MP4_DL(url, title, cookies)
+        #3 APIv2
+        r = requests.post('https://v.anime1.me/api',headers = headers,data = xsend, timeout=(3,7))
+        url = 'https:{}'.format(json.loads(r.text)['s'][0]['src'])
+        
+        set_cookie = r.headers['set-cookie']
+        cookie_e = re.search(r"e=(.*?);", set_cookie, re.M|re.I).group(1)
+        cookie_p = re.search(r"p=(.*?);", set_cookie, re.M|re.I).group(1)
+        cookie_h = re.search(r"HttpOnly, h=(.*?);", set_cookie, re.M|re.I).group(1)
+        cookies = 'e={};p={};h={};'.format(cookie_e, cookie_p, cookie_h)
+        await MP4_DL(url, title, cookies)
+    except TypeError:
+        print("- \033[1;31mUnable to support this link. QAQ ({})\033[0m".format(url))
+        return
 
-async def MP4_DL(Download_URL, Video_Name, Cookies):
+async def MP4_DL(Download_URL, Video_Name, Cookies, retries=3):
     # 每次下載的資料大小
     chunk_size = 10240 
     global total_size
@@ -95,10 +99,14 @@ async def MP4_DL(Download_URL, Video_Name, Cookies):
     }
     
     try:
-        r = requests.get(Download_URL, headers = headers_cookies, stream=True, timeout=(3,7)) 
+        r = requests.get(Download_URL, headers=headers_cookies, stream=True, timeout=(3, 7))
     except Exception as e:
-        print("x \033[1;31mFail to Download\033[0m:{}, Cause: {}".format(Video_Name, e))
-        return
+        if retries > 0:
+            print("x \033[1;31mRetry to Download\033[0m:{}, Cause: {}".format(Video_Name, e))
+            return await MP4_DL(Download_URL, Video_Name, Cookies, retries - 1)
+        else:
+            print("x \033[1;31mFail to Download\033[0m:{}, Cause: {}".format(Video_Name, e))
+            return None
     # 影片大小
     content_length = int(r.headers['content-length'])
     file = os.path.join(download_path, name, '{}.mp4'.format(Video_Name))
@@ -121,7 +129,7 @@ async def MP4_DL(Download_URL, Video_Name, Cookies):
             total_size += content_length
         except Exception as e:
             print("x \033[1;31mDownload Error\033[0m:{}, Cause: {}".format(Video_Name, e))
-            return MP4_DL(Download_URL, Video_Name, Cookies)
+            return await MP4_DL(Download_URL, Video_Name, Cookies)
     else:
         print("x \033[1;31mFail to Download\033[0m:{}".format(r.status_code)) 
 
