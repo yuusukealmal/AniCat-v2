@@ -78,8 +78,8 @@ async def Anime_Episode(url):
         cookie_h = re.search(r"HttpOnly, h=(.*?);", set_cookie, re.M|re.I).group(1)
         cookies = 'e={};p={};h={};'.format(cookie_e, cookie_p, cookie_h)
         await MP4_DL(url, title, cookies)
-    except TypeError:
-        color.RED.format("x", "Error to find data for this link: {}".format(url))
+    except Exception as e:
+        color.RED.format("x", "Error to find data for this link: {}, Cause: {}".format(url, e))
         return
 
 async def MP4_DL(download_URL, video_name, cookies, retries=3):
@@ -111,7 +111,7 @@ async def MP4_DL(download_URL, video_name, cookies, retries=3):
     file = os.path.join(download_path, name, '{}.mp4'.format(video_name))
     
     if (os.path.exists(file) and open(os.path.join(download_path, name, '{}.mp4'.format(video_name)), 'rb').read().__len__() == content_length):
-        color.GREEN.format("-", "File Exists, Same Size as Server\:{} [{}]".format(video_name, convert_size(content_length)))
+        color.GREEN.format("-", "File Exists, Same Size as Server:{} [{}]".format(video_name, convert_size(content_length)))
         return
     if(r.status_code == 200):
         color.BLUE.format("+" "{} [{size:.2f} MB]".format(video_name, size = content_length / 1024 / 1024))
