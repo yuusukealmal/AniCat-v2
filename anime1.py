@@ -7,7 +7,6 @@ from routes import color
 # import  concurrent.futures
 
 download_path = "{}/Anime1_Download".format(os.getcwd())
-name = ""
 eps, total_size = 0, 0
 
 # 設定 Header 
@@ -34,11 +33,6 @@ async def Anime_Season(url):
     # https://anime1.me/category/.../...
     r = requests.post(url, headers = headers, timeout=(3,7))
     soup = BeautifulSoup(r.text, 'lxml')
-    
-    global name 
-    name = re.search(r'(.*?) \u2013 Anime1\.me 動畫線上看', soup.find('title').text, re.M|re.I).group(1)
-    if not os.path.exists(os.path.join(download_path, name)):
-        os.mkdir(os.path.join(download_path, name))
 
     h2 = soup.find_all('h2', class_="entry-title")
     for i in h2:
@@ -50,10 +44,14 @@ async def Anime_Season(url):
         ele_div = soup.find('div', class_ = 'nav-previous')
         nextUrl = ele_div.find('a').get('href')
         urls.extend(await Anime_Season(nextUrl))
-    urls.reverse()
+        
+    name = re.search(r'(.*?) \u2013 Anime1\.me 動畫線上看', soup.find('title').text, re.M|re.I).group(1)
+    if not os.path.exists(os.path.join(download_path, name)):
+        os.mkdir(os.path.join(download_path, name))
+    urls.append(name)
     return urls
 
-async def Anime_Episode(url):
+async def Anime_Episode(folder, url):
     r = requests.post(url, headers = headers, timeout=(3,7))
     soup = BeautifulSoup(r.text, 'lxml')
     try:
@@ -77,12 +75,12 @@ async def Anime_Episode(url):
         cookie_p = re.search(r"p=(.*?);", set_cookie, re.M|re.I).group(1)
         cookie_h = re.search(r"HttpOnly, h=(.*?);", set_cookie, re.M|re.I).group(1)
         cookies = 'e={};p={};h={};'.format(cookie_e, cookie_p, cookie_h)
-        await MP4_DL(url, title, cookies)
+        await MP4_DL(url, folder, title, cookies)
     except Exception as e:
         color.RED.format("x", "Error to find data for this link: {}, Cause: {}".format(url, e))
         return
 
-async def MP4_DL(download_URL, video_name, cookies, retries=3):
+async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
     # 每次下載的資料大小
     chunk_size = 10240 
     global total_size
@@ -108,9 +106,9 @@ async def MP4_DL(download_URL, video_name, cookies, retries=3):
             return None
     # 影片大小
     content_length = int(r.headers['content-length'])
-    file = os.path.join(download_path, name, '{}.mp4'.format(video_name))
+    file = os.path.join(download_path, folder, '{}.mp4'.format(video_name))
     
-    if (os.path.exists(file) and open(os.path.join(download_path, name, '{}.mp4'.format(video_name)), 'rb').read().__len__() == content_length):
+    if (os.path.exists(file) and open(os.path.join(download_path, folder, '{}.mp4'.format(video_name)), 'rb').read().__len__() == content_length):
         color.GREEN.format("-", "File Exists, Same Size as Server:{} [{}]".format(video_name, convert_size(content_length)))
         return
     if(r.status_code == 200):
@@ -118,7 +116,7 @@ async def MP4_DL(download_URL, video_name, cookies, retries=3):
         # Progress Bar
         try:
             with alive_bar(round(content_length / chunk_size), spinner = 'arrows2', bar = 'filling' ) as bar:
-                with open(os.path.join(download_path, name, '{}.mp4'.format(video_name)), 'wb') as f:
+                with open(os.path.join(download_path, folder, '{}.mp4'.format(video_name)), 'wb') as f:
                     for data in r.iter_content(chunk_size = chunk_size):
                         f.write(data)
                         f.flush()
@@ -153,8 +151,10 @@ async def main():
             color.RED.format("-", "Unable to support this link. QAQ ({})".format(anime_url))
             sys.exit(0)
 
-        for url in url_list:
-            await Anime_Episode(url)
+        folder = url_list[-1]
+        url_list.pop(-1)
+        for url in url_list[::-1]:
+            await Anime_Episode(folder, url)
 
     ## Multithreading ##
     # with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
