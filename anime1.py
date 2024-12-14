@@ -44,11 +44,11 @@ async def Anime_Season(url):
         ele_div = soup.find('div', class_ = 'nav-previous')
         nextUrl = ele_div.find('a').get('href')
         urls.extend(await Anime_Season(nextUrl))
-        
-    name = re.search(r'(.*?) \u2013 Anime1\.me 動畫線上看', soup.find('title').text, re.M|re.I).group(1)
-    if not os.path.exists(os.path.join(download_path, name)):
-        os.mkdir(os.path.join(download_path, name))
-    urls.append(name)
+    else:
+        name = re.search(r'(.*?) \u2013 Anime1\.me 動畫線上看', soup.find('title').text, re.M|re.I).group(1)
+        if not os.path.exists(os.path.join(download_path, name)):
+            os.mkdir(os.path.join(download_path, name))
+        urls.append(name)
     return urls
 
 async def Anime_Episode(folder, url):
