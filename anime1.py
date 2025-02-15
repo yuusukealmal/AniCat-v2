@@ -68,7 +68,8 @@ async def Anime_Episode(folder, url):
 
         #3 APIv2
         r = requests.post('https://v.anime1.me/api',headers = headers,data = xsend, timeout=(3,7))
-        url = 'https:{}'.format(json.loads(r.text)['s'][0]['src'])
+        index = 1 if json.loads(r.text)['s'][0]['type'] == 'application/x-mpegURL' else 0
+        url = 'https:{}'.format(json.loads(r.text)['s'][index]['src'])
         
         set_cookie = r.headers['set-cookie']
         cookie_e = re.search(r"e=(.*?);", set_cookie, re.M|re.I).group(1)
