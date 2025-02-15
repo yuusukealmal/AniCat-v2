@@ -113,7 +113,7 @@ async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
         color.GREEN.format("-", "File Exists, Same Size as Server:{} [{}]".format(video_name, convert_size(content_length)))
         return
     if(r.status_code == 200):
-        color.BLUE.format("+" "{} [{size:.2f} MB]".format(video_name, size = content_length / 1024 / 1024))
+        color.BLUE.format("+", "{} [{size:.2f} MB]".format(video_name, size = content_length / 1024 / 1024))
         # Progress Bar
         try:
             with alive_bar(round(content_length / chunk_size), spinner = 'arrows2', bar = 'filling' ) as bar:
