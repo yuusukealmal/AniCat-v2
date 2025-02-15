@@ -144,7 +144,7 @@ async def main():
 
         url_list = []
         # 區分連結類型
-        if re.search(r"anime1.me/category/(.*?)", anime_url, re.M|re.I):
+        if re.search(r"anime1.me/category/(.*?)", anime_url, re.M|re.I) or re.search(r"anime1.me/\?cat=[0-9]", anime_url, re.M|re.I):
             url_list.extend(await Anime_Season(anime_url))
         elif re.search(r"anime1.me/[0-9]", anime_url, re.M|re.I):
             url_list.append(anime_url)
