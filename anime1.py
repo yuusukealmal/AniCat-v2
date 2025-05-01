@@ -87,7 +87,7 @@ async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
     global total_size
     global eps
 
-    headers_cookies ={
+    headers_cookies = {
         "accept": "*/*",
         "accept-encoding": 'identity;q=1, *;q=0',
         "accept-language": 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -95,13 +95,19 @@ async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
         "dnt": '1',
         "user-agent": 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
     }
+
+    file_path = os.path.join(download_path, folder, f'{video_name}.mp4')
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
     
+    if os.path.exists(file_path) and (downloaded:=os.path.getsize(file_path)):
+        headers_cookies["Range"] = f'bytes={downloaded}-'
+
     try:
         r = requests.get(download_URL, headers=headers_cookies, stream=True, timeout=(3, 7))
     except Exception as e:
         if retries > 0:
             color.YELLOW.format("!", "Retry to Download:{}, Cause: {}".format(video_name, e))
-            return await MP4_DL(download_URL, video_name, cookies, retries - 1)
+            return await MP4_DL(download_URL, folder, video_name, cookies, retries - 1)
         else:
             color.RED.format("x", "Fail to Download:{}, Cause: {}".format(video_name, e))
             return None
@@ -109,22 +115,27 @@ async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
     content_length = int(r.headers['content-length'])
     file = os.path.join(download_path, folder, '{}.mp4'.format(video_name))
     
-    if (os.path.exists(file) and open(os.path.join(download_path, folder, '{}.mp4'.format(video_name)), 'rb').read().__len__() == content_length):
+    if (os.path.exists(file) and open(file), 'rb').read().__len__() == content_length:
         color.GREEN.format("-", "File Exists, Same Size as Server:{} [{}]".format(video_name, convert_size(content_length)))
         return
     if(r.status_code == 200):
         color.BLUE.format("+", "{} [{size:.2f} MB]".format(video_name, size = content_length / 1024 / 1024))
         # Progress Bar
         try:
-            with alive_bar(round(content_length / chunk_size), spinner = 'arrows2', bar = 'filling' ) as bar:
-                with open(os.path.join(download_path, folder, '{}.mp4'.format(video_name)), 'wb') as f:
-                    for data in r.iter_content(chunk_size = chunk_size):
+            total_length = int(r.headers.get('content-length', 0)) + downloaded
+            remaining_chunks = (total_length - downloaded) // chunk_size + 1
+
+            color.BLUE.format("+", f"{video_name} [{total_length / 1024 / 1024:.2f} MB] (Resume from {downloaded} bytes)")
+
+            with alive_bar(remaining_chunks, spinner='arrows2', bar='filling') as bar:
+                with open(file_path, 'ab') as f:
+                    for data in r.iter_content(chunk_size=chunk_size):
                         f.write(data)
                         f.flush()
                         bar()
-                f.close()
+
             eps += 1
-            total_size += content_length
+            total_size += total_length - downloaded
         except Exception as e:
             color.RED.format("x", "Download Error:{}, Cause: {}".format(video_name, e))
             return await MP4_DL(download_URL, video_name, cookies)
