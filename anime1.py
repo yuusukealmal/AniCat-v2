@@ -114,10 +114,7 @@ async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
     # 影片大小
     content_length = int(r.headers['content-length'])
     file = os.path.join(download_path, folder, '{}.mp4'.format(video_name))
-    
-    if (os.path.exists(file) and open(file), 'rb').read().__len__() == content_length:
-        color.GREEN.format("-", "File Exists, Same Size as Server:{} [{}]".format(video_name, convert_size(content_length)))
-        return
+
     if(r.status_code == 200):
         color.BLUE.format("+", "{} [{size:.2f} MB]".format(video_name, size = content_length / 1024 / 1024))
         # Progress Bar
