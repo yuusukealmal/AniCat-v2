@@ -76,7 +76,7 @@ async def Anime_One_Episode(folder, url):
             BASE + button.get("url")
             for button in soup.find_all("button", class_="play-select")
         ]
-        for i in proxies[1:]:
+        for i in proxies:
             proxy_request = requests.get(i)
             proxy_soup = bs4(proxy_request.text, "lxml")
             try:

@@ -52,7 +52,6 @@ async def main():
                 await Anime_Me_Episode(folder, url)
             else:
                 await Anime_One_Episode(folder, url)
-            break
 
     end_time = time.time()
     print(
