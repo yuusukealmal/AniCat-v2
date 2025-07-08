@@ -1,14 +1,15 @@
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
-import asyncio, os, re, time, sys, requests, json, math
+import os
+import re
+import json
+
+import requests
 from bs4 import BeautifulSoup
 from alive_progress import alive_bar
-from routes import color
 
-# import  concurrent.futures
+import value
+from value import download_path
+from color import color
 
-download_path = "{}/Anime1_Download".format(os.getcwd())
-eps, total_size = 0, 0
 
 # 設定 Header
 headers = {
@@ -23,15 +24,7 @@ headers = {
 }
 
 
-def convert_size(size):
-    size_name = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-    i = size // 1024 ** (int(round(math.log(size, 1024))) - 1)
-    d = round(size % 1024, 2)
-    f = size_name[int(round(math.log(size, 1024))) - 1]
-    return f"{d} {f}" if i == 0 else f"{i}.{d} {f}"
-
-
-async def Anime_Season(url):
+async def Anime_Me_Season(url):
     urls = []
     # https://anime1.me/category/.../...
     r = requests.post(url, headers=headers, timeout=(3, 7))
@@ -39,14 +32,14 @@ async def Anime_Season(url):
 
     h2 = soup.find_all("h2", class_="entry-title")
     for i in h2:
-        url = i.find("a", attrs={"rel": "bookmark"}).get("href")
-        urls.append(url)
+        target = i.find("a", attrs={"rel": "bookmark"}).get("href")
+        urls.append(target)
 
     # nextPage
     if soup.find("div", class_="nav-previous"):
         ele_div = soup.find("div", class_="nav-previous")
         nextUrl = ele_div.find("a").get("href")
-        urls.extend(await Anime_Season(nextUrl))
+        urls.extend(await Anime_Me_Season(nextUrl))
     else:
         name = re.search(
             r"(.*?) \u2013 Anime1\.me 動畫線上看", soup.find("title").text, re.M | re.I
@@ -57,7 +50,7 @@ async def Anime_Season(url):
     return urls
 
 
-async def Anime_Episode(folder, url):
+async def Anime_Me_Episode(folder, url):
     r = requests.post(url, headers=headers, timeout=(3, 7))
     soup = BeautifulSoup(r.text, "lxml")
     try:
@@ -86,7 +79,7 @@ async def Anime_Episode(folder, url):
         cookie_p = re.search(r"p=(.*?);", set_cookie, re.M | re.I).group(1)
         cookie_h = re.search(r"HttpOnly, h=(.*?);", set_cookie, re.M | re.I).group(1)
         cookies = "e={};p={};h={};".format(cookie_e, cookie_p, cookie_h)
-        await MP4_DL(url, folder, title, cookies)
+        await Anime_Me_MP4_DL(url, folder, title, cookies)
     except Exception as e:
         color.RED.format(
             "x", "Error to find data for this link: {}, Cause: {}".format(url, e)
@@ -94,11 +87,9 @@ async def Anime_Episode(folder, url):
         return
 
 
-async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
+async def Anime_Me_MP4_DL(download_URL, folder, video_name, cookies, retries=3):
     # 每次下載的資料大小
     chunk_size = 10240
-    global total_size
-    global eps
 
     headers_cookies = {
         "accept": "*/*",
@@ -112,7 +103,8 @@ async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
     file_path = os.path.join(download_path, folder, f"{video_name}.mp4")
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-    if os.path.exists(file_path) and (downloaded := os.path.getsize(file_path)):
+    downloaded = os.path.getsize(file_path) if os.path.exists(file_path) else 0
+    if os.path.exists(file_path) and downloaded:
         headers_cookies["Range"] = f"bytes={downloaded}-"
 
     try:
@@ -124,7 +116,9 @@ async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
             color.YELLOW.format(
                 "!", "Retry to Download:{}, Cause: {}".format(video_name, e)
             )
-            return await MP4_DL(download_URL, folder, video_name, cookies, retries - 1)
+            return await Anime_Me_MP4_DL(
+                download_URL, folder, video_name, cookies, retries - 1
+            )
         else:
             color.RED.format(
                 "x", "Fail to Download:{}, Cause: {}".format(video_name, e)
@@ -132,7 +126,6 @@ async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
             return None
     # 影片大小
     content_length = int(r.headers["content-length"])
-    file = os.path.join(download_path, folder, "{}.mp4".format(video_name))
 
     if r.status_code == 200:
         color.BLUE.format(
@@ -156,55 +149,11 @@ async def MP4_DL(download_URL, folder, video_name, cookies, retries=3):
                         f.flush()
                         bar()
 
-            eps += 1
-            total_size += total_length - downloaded
+            value.eps += 1
+            value.total_size += total_length - downloaded
         except Exception as e:
             color.RED.format("x", "Download Error:{}, Cause: {}".format(video_name, e))
-            return await MP4_DL(download_URL, video_name, cookies)
+            return await Anime_Me_MP4_DL(download_URL, folder, video_name, cookies)
+
     else:
         color.RED.format("x", "Fail to Download{}".format(r.status_code))
-
-
-async def main():
-
-    start_time = time.time()
-
-    if not os.path.exists(download_path):
-        os.mkdir(download_path)
-
-    anime_urls = open("url.txt", "r").read().splitlines()
-
-    for anime_url in anime_urls:
-
-        url_list = []
-        # 區分連結類型
-        if re.search(r"anime1.me/category/(.*?)", anime_url, re.M | re.I) or re.search(
-            r"anime1.me/\?cat=[0-9]", anime_url, re.M | re.I
-        ):
-            url_list.extend(await Anime_Season(anime_url))
-        elif re.search(r"anime1.me/[0-9]", anime_url, re.M | re.I):
-            url_list.append(anime_url)
-        else:
-            color.RED.format(
-                "-", "Unable to support this link. QAQ ({})".format(anime_url)
-            )
-            sys.exit(0)
-
-        folder = url_list[-1]
-        url_list.pop(-1)
-        for url in url_list[::-1]:
-            await Anime_Episode(folder, url)
-
-    ## Multithreading ##
-    # with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-    #     executor.map(Anime_Episode, url_list)
-
-    end_time = time.time()
-
-    print(
-        f"+ 耗時 {round(end_time - start_time, 2)} 秒, 下載 {eps} 集, 總大小 {convert_size(total_size)}"
-    )
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
