@@ -34,8 +34,3 @@ AniCat-v2 為一個 [Anime1.me](https://anime1.me/) 的下載器。
    ```
    python anime1.py
    ```
-
-## TODO
-
-- [ ] 平行化下載
-- [ ] GUI 介面
