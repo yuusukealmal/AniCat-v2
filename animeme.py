@@ -74,11 +74,14 @@ async def Anime_Me_Episode(folder, url):
         )
         url = "https:{}".format(json.loads(r.text)["s"][index]["src"])
 
-        set_cookie = r.headers["set-cookie"]
-        cookie_e = re.search(r"e=(.*?);", set_cookie, re.M | re.I).group(1)
-        cookie_p = re.search(r"p=(.*?);", set_cookie, re.M | re.I).group(1)
-        cookie_h = re.search(r"HttpOnly, h=(.*?);", set_cookie, re.M | re.I).group(1)
-        cookies = "e={};p={};h={};".format(cookie_e, cookie_p, cookie_h)
+        cookies = "".join(
+            [
+                f"{i}={j};"
+                for i, j in re.findall(
+                    r"\b([eph])=([^;,\s][^;,\s]*)", r.headers["set-cookie"]
+                )
+            ]
+        )
         await Anime_Me_MP4_DL(url, folder, title, cookies)
     except Exception as e:
         color.RED.format(
