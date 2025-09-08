@@ -134,7 +134,7 @@ async def Anime_One_MP4_DL(m3u8, folder, video_name, retries=3):
                 bar()
                 continue
 
-            if r.status_code == 200:
+            if r.ok:
                 try:
                     with open(ts_file, "wb") as f_out:
                         f_out.write(r.content)

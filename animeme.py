@@ -130,7 +130,7 @@ async def Anime_Me_MP4_DL(download_URL, folder, video_name, cookies, retries=3):
     # 影片大小
     content_length = int(r.headers["content-length"])
 
-    if r.status_code == 200:
+    if r.ok:
         color.BLUE.format(
             "+",
             "{} [{size:.2f} MB]".format(video_name, size=content_length / 1024 / 1024),
@@ -159,4 +159,4 @@ async def Anime_Me_MP4_DL(download_URL, folder, video_name, cookies, retries=3):
             return await Anime_Me_MP4_DL(download_URL, folder, video_name, cookies)
 
     else:
-        color.RED.format("x", "Fail to Download{}".format(r.status_code))
+        color.RED.format("x", "Fail to Download {}".format(r.status_code))
