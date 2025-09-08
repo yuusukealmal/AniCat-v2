@@ -71,6 +71,9 @@ async def Anime_One_Episode(folder, url):
     episode_request = requests.get(url, timeout=(3, 7))
     soup = bs4(episode_request.text, "lxml")
     title = soup.find("meta", attrs={"property": "og:title"}).get("content")
+    if os.path.exists(os.path.join(value.download_path, folder, f"{title}.mp4")):
+        color.YELLOW.format("-", f"Episode: {title} already exists, skip.")
+        return
     try:
         proxies = [
             BASE + button.get("url")
